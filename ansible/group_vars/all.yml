@@ -1,0 +1,6 @@
+---
+app_image: "ghcr.io/pendal4f/devops-ci-app"
+app_tag: "ЗАМЕНИТЬ_НА_ПОЛНЫЙ_SHA_ИЗ_ПР10"
+app_container_name: "devops-ci-app"
+app_host_port: 5000
+app_internal_port: 5000
