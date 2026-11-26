@@ -67,3 +67,32 @@
 Запросы к `/.env` и `/wp-login.php` зарегистрированы в журнале и получили HTTP 404. Это означает, что запрошенные ресурсы отсутствуют. Журнал позволяет определить адрес клиента, путь, код ответа и клиентскую программу.
 
 Созданы контрольные снимки VM `04-nginx-https` и `05-rsync-deployed`.
+
+## 9. Образ приложения в GHCR
+
+- Образ: `ghcr.io/pendal4f/devops-ci-app` (публикуется конвейером репозитория `pendal4f/devops-ci-app` только из `main`).
+- Теги: полный SHA коммита (неизменяемая привязка к исходнику) и `latest` (изменяемый указатель).
+- Для развёртывания используется только полный SHA: `1c03cf8c29649f08f86f8d50e73b1e3ee1f801e9`.
+- Пакет GHCR публичный, поэтому `docker pull` на VM выполняется без аутентификации.
+- Контейнер слушает порт `5000`, работает от непривилегированного пользователя `app`, health endpoint — `/health`.
+
+## 10. Ansible
+
+- Расположение проекта: каталог `ansible/` репозитория `devops-course-2026`; запуск из каталога `ansible/` в файловой системе WSL (`~/devops-course-2026/ansible`), не из `/mnt/c`.
+- Управляющий узел: WSL (Ubuntu) на хостовой системе, ansible-core 2.16+, коллекции из `ansible/requirements.yml`.
+- Управляемый узел: VM `devops-vm`, Ubuntu Server 24.04, адрес Host-only `192.168.56.102`, SSH-порт `22`.
+- Inventory:
+  - `inventory/bootstrap.ini` — первичный запуск от `student` по паролю (`--ask-pass --ask-become-pass`);
+  - `inventory/prod.ini` — последующие запуски от `devops` по ключу `~/.ssh/devops_vm`, без интерактивного ввода (используется по умолчанию через `ansible.cfg`).
+- Роли:
+  - `base` — проверка ОС, базовые пакеты, `python3-requests`, официальный репозиторий Docker, служба Docker;
+  - `ssh` — пользователь `devops`, ключ, `NOPASSWD` sudo, `00-ansible-hardening.conf`, UFW (22, 80);
+  - `nginx` — reverse proxy `:80 → 127.0.0.1:5000`, отключение default site, `nginx -t` перед reload;
+  - `app` — загрузка образа по SHA, контейнер `devops-ci-app` на `127.0.0.1:5000`, проверка `/health`.
+- Образ: `ghcr.io/pendal4f/devops-ci-app:<app_tag>`, `app_tag` задан в `group_vars/all.yml` полным SHA.
+- Порт контейнера: `5000` (только loopback), внешний доступ — через Nginx на `80`.
+- Health endpoint: `http://192.168.56.102/health` (через Nginx), `http://127.0.0.1:5000/health` (на VM).
+- Команды:
+  - первичный запуск: `ansible-playbook -i inventory/bootstrap.ini site.yml --ask-pass --ask-become-pass`;
+  - повторный запуск: `ansible-playbook site.yml` (ожидается `changed=0`);
+  - read-only аудит: `ansible-playbook verify.yml`.

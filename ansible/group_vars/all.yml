@@ -1,0 +1,6 @@
+---
+app_image: "ghcr.io/pendal4f/devops-ci-app"
+app_tag: "1c03cf8c29649f08f86f8d50e73b1e3ee1f801e9"
+app_container_name: "devops-ci-app"
+app_host_port: 5000
+app_internal_port: 5000
